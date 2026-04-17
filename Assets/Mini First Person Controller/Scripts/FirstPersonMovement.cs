@@ -11,34 +11,156 @@ public class FirstPersonMovement : MonoBehaviour
     public float runSpeed = 9;
     public KeyCode runningKey = KeyCode.LeftShift;
 
+    [Header("Stamina")]
+    public float maxStamina = 100f;
+    public float currentStamina = 100f;
+
+    // Base rates
+    private const float BaseSprintDrain   = 33f;  // per second while sprinting
+    private const float BaseRegenRate     = 25f;  // per second while not sprinting
+    private const float RegenLockDuration = 1.5f; // seconds before regen resumes after hitting 0
+
+    // Stress-mode multipliers
+    private const float StressDrainMultiplier = 3f;   // triple drain
+    private const float StressRegenMultiplier = 0.5f; // 50% slower regen
+
+    private float regenLockTimer  = 0f;   // counts down after stamina hits 0
+    private bool  regenLocked     = false;
+
+    [Header("EEG Stress Mode")]
+    // Assign in Inspector, or find at runtime
+    public EEGOscReceiver eegReceiver;
+
+    private const float StressModeDuration = 0f;
+    private float stressModeTimer  = 0f;
+    private bool  inStressMode     = false;
+    private int   lastKnownStressMode = 0;
+
     Rigidbody rigidbody;
+
     /// <summary> Functions to override movement speed. Will use the last added override. </summary>
     public List<System.Func<float>> speedOverrides = new List<System.Func<float>>();
 
-
-
     void Awake()
     {
-        // Get the rigidbody on this.
         rigidbody = GetComponent<Rigidbody>();
+
+        if (eegReceiver == null)
+            eegReceiver = FindFirstObjectByType<EEGOscReceiver>();
+    }
+
+    void Update()
+    {
+        UpdateStressMode();
+        UpdateStamina();
     }
 
     void FixedUpdate()
     {
-        // Update IsRunning from input.
-        IsRunning = canRun && Input.GetKey(runningKey);
+        // Sprinting requires stamina > 0
+        bool staminaAvailable = currentStamina > 0f;
+        IsRunning = canRun && staminaAvailable && Input.GetKey(runningKey);
 
-        // Get targetMovingSpeed.
         float targetMovingSpeed = IsRunning ? runSpeed : speed;
         if (speedOverrides.Count > 0)
-        {
             targetMovingSpeed = speedOverrides[speedOverrides.Count - 1]();
-        }
 
-        // Get targetVelocity from input.
-        Vector2 targetVelocity =new Vector2( Input.GetAxis("Horizontal") * targetMovingSpeed, Input.GetAxis("Vertical") * targetMovingSpeed);
+        Vector2 targetVelocity = new Vector2(
+            Input.GetAxis("Horizontal") * targetMovingSpeed,
+            Input.GetAxis("Vertical")   * targetMovingSpeed
+        );
 
-        // Apply movement.
-        rigidbody.velocity = transform.rotation * new Vector3(targetVelocity.x, rigidbody.velocity.y, targetVelocity.y);
+        rigidbody.linearVelocity = transform.rotation * new Vector3(
+            targetVelocity.x,
+            rigidbody.linearVelocity.y,
+            targetVelocity.y
+        );
     }
+
+    // -------------------------------------------------------------------------
+    // Stress Mode
+    // -------------------------------------------------------------------------
+
+    private void UpdateStressMode()
+    {
+        if (eegReceiver == null) return;
+
+        // Detect a new non-zero stressMode value (edge trigger)
+        int currentStressModeValue = eegReceiver.stressMode;
+        if (currentStressModeValue != 0 && currentStressModeValue != lastKnownStressMode)
+        {
+            inStressMode     = true;
+            stressModeTimer  = StressModeDuration;
+        }
+        lastKnownStressMode = currentStressModeValue;
+
+        // Count down the stress window
+        if (inStressMode)
+        {
+            stressModeTimer -= Time.deltaTime;
+            if (stressModeTimer <= 0f)
+            {
+                inStressMode    = false;
+                stressModeTimer = 0f;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Stamina
+    // -------------------------------------------------------------------------
+
+    private void UpdateStamina()
+    {
+        float drainRate = BaseSprintDrain * (inStressMode ? StressDrainMultiplier : 1f);
+        float regenRate = BaseRegenRate   * (inStressMode ? StressRegenMultiplier : 1f);
+
+        if (IsRunning)
+        {
+            // Drain stamina while actively sprinting
+            currentStamina -= drainRate * Time.deltaTime;
+
+            if (currentStamina <= 0f)
+            {
+                currentStamina = 0f;
+
+                // Lock regeneration for 1.5 s
+                regenLocked    = true;
+                regenLockTimer = RegenLockDuration;
+            }
+        }
+        else
+        {
+            // Handle the regen lock countdown
+            if (regenLocked)
+            {
+                regenLockTimer -= Time.deltaTime;
+                if (regenLockTimer <= 0f)
+                {
+                    regenLocked    = false;
+                    regenLockTimer = 0f;
+                }
+            }
+
+            // Regenerate only when not locked and below max
+            if (!regenLocked && currentStamina < maxStamina)
+            {
+                currentStamina += regenRate * Time.deltaTime;
+                currentStamina  = Mathf.Min(currentStamina, maxStamina);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Optional public helpers for UI
+    // -------------------------------------------------------------------------
+
+    /// <summary> 0–1 fill fraction for a stamina bar. </summary>
+    public float StaminaFraction => currentStamina / maxStamina;
+
+    /// <summary> Whether the 15-second EEG stress window is active. </summary>
+    public bool IsInStressMode => inStressMode;
+
+    /// <summary> Remaining seconds in the current stress window (0 if inactive). </summary>
+    public float StressModeTimeRemaining => stressModeTimer;
 }

@@ -29,6 +29,20 @@ public class DDAOpacityController : MonoBehaviour
             c.r = Mathf.Lerp(0.5f, 1f, eegReceiver.eegRatio);
             c.g = Mathf.Lerp(0.5f, 0.1f, eegReceiver.eegRatio);
             img.color = c;
+
+            if (eegReceiver.eegRatio >= 0.9f)
+            {
+                eegReceiver.stressMode = 2;
+            }
+            else if (eegReceiver.eegRatio >= 0.7f)
+            {
+                eegReceiver.stressMode = 1;
+            }
+            else
+            {
+                eegReceiver.stressMode = 0;
+            }
+
         }
     }
 }

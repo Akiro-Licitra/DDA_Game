@@ -37,6 +37,7 @@ public class PlayerShooter : MonoBehaviour
 
         // Instantiate ball
         GameObject ball = Instantiate(ballPrefab, shootPoint.position, shootPoint.rotation);
+        ball.tag = "PlayerBall";
 
         // Ensure Rigidbody is present and set properly
         Rigidbody rb = ball.GetComponent<Rigidbody>();
@@ -47,7 +48,7 @@ public class PlayerShooter : MonoBehaviour
 
         rb.isKinematic = false;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        rb.velocity = Vector3.zero;  // Reset velocity before applying force
+        rb.linearVelocity = Vector3.zero;  // Reset velocity before applying force
 
         // Ensure collider exists and is not a trigger
         Collider col = ball.GetComponent<Collider>();

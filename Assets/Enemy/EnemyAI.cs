@@ -82,7 +82,7 @@ public class EnemyAI : MonoBehaviour
 
     private void ResetAfterKnockback()
     {
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         navMeshAgent.enabled = true;
         isKnockedback = false;
