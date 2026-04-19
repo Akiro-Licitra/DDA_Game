@@ -23,7 +23,7 @@ public class EEGOscReceiver : MonoBehaviour
     // stressMode is READ by FirstPersonMovement to trigger the 15-second stress window.
     // It changes whenever ballDamage tier changes (e.g. 0 -> 1 or 1 -> 2).
     public int stressMode  = 0;
-    public int ballDamage  = 0;
+    public int ballDamage  = 1;
 
     // Track last stressMode so we can emit a new value on change
     private int lastStressMode = 0;
@@ -85,7 +85,7 @@ public class EEGOscReceiver : MonoBehaviour
     // -------------------------------------------------------------------------
     private void ReceiveEEG(float value)
     {
-        rawEegRatio = value;
+        rawEegRatio = value;    
 
         ratioWindow.Enqueue(rawEegRatio);
         if (ratioWindow.Count > smoothingWindowSize)

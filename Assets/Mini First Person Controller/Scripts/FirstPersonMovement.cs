@@ -17,7 +17,7 @@ public class FirstPersonMovement : MonoBehaviour
 
     // Base rates
     private const float BaseSprintDrain   = 33f;  // per second while sprinting
-    private const float BaseRegenRate     = 25f;  // per second while not sprinting
+    private const float BaseRegenRate     = 20f;  // per second while not sprinting
     private const float RegenLockDuration = 1.5f; // seconds before regen resumes after hitting 0
 
     // Stress-mode multipliers
@@ -31,7 +31,7 @@ public class FirstPersonMovement : MonoBehaviour
     // Assign in Inspector, or find at runtime
     public EEGOscReceiver eegReceiver;
 
-    private const float StressModeDuration = 0f;
+    private const float StressModeDuration = 15f;
     private float stressModeTimer  = 0f;
     private bool  inStressMode     = false;
     private int   lastKnownStressMode = 0;
@@ -83,18 +83,26 @@ public class FirstPersonMovement : MonoBehaviour
 
     private void UpdateStressMode()
     {
-        if (eegReceiver == null) return;
+        // Delegate entirely to EEGStressManager, which handles both high-stress
+        // (tier >= 2) and the unfocus StaminaDrain modifier.
+        if (EEGStressManager.Instance != null)
+        {
+            inStressMode = EEGStressManager.Instance.StaminaDrainActive;
+            // stressModeTimer is no longer needed here — manager owns the clock.
+            // Keep it in sync for any external UI reading IsInStressMode.
+            stressModeTimer = EEGStressManager.Instance.ModifierTimeRemaining;
+            return;
+        }
 
-        // Detect a new non-zero stressMode value (edge trigger)
+        // Fallback: original edge-detect logic if manager is not present
+        if (eegReceiver == null) return;
         int currentStressModeValue = eegReceiver.stressMode;
         if (currentStressModeValue != 0 && currentStressModeValue != lastKnownStressMode)
         {
-            inStressMode     = true;
-            stressModeTimer  = StressModeDuration;
+            inStressMode    = true;
+            stressModeTimer = StressModeDuration;
         }
         lastKnownStressMode = currentStressModeValue;
-
-        // Count down the stress window
         if (inStressMode)
         {
             stressModeTimer -= Time.deltaTime;

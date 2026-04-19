@@ -1,85 +1,61 @@
 using UnityEngine;
-using System.Collections.Generic; // For List
+using System.Collections.Generic;
 
 public class PlayerShooter : MonoBehaviour
 {
-    public GameObject ballPrefab;       
-    public Transform shootPoint;        
-    public float shootForce = 20f;      
-    public int maxBalls = 6;            
+    public GameObject ballPrefab;
+    public Transform  shootPoint;
+    public float      shootForce = 20f;
+    public int        maxBalls   = 6;
 
+    // Read by BulletUI
+    public int BallsUsed      => activeBalls.Count;
+    public int BallsRemaining => maxBalls - activeBalls.Count;
+
+    private EEGOscReceiver   eeg;
     private List<GameObject> activeBalls = new List<GameObject>();
+
+    void Start()
+    {
+        eeg = FindFirstObjectByType<EEGOscReceiver>();
+        if (eeg == null)
+            Debug.LogError("PlayerShooter: No EEGOscReceiver found in the scene!");
+    }
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0)) // Left click
-        {
-            Shoot();
-        }
+        // Clean up balls that were destroyed externally (e.g. hit something and got Destroy'd)
+        activeBalls.RemoveAll(b => b == null);
 
-        if (Input.GetKeyDown(KeyCode.R)) // Reload key
-        {
-            Reload();
-        }
+        if (Input.GetMouseButtonDown(0)) Shoot();
+        if (Input.GetKeyDown(KeyCode.R))  Reload();
     }
 
     void Shoot()
     {
-        if (ballPrefab == null || shootPoint == null)
-        {
-            return;
-        }
+        if (ballPrefab == null || shootPoint == null) return;
+        if (activeBalls.Count >= maxBalls) return;
 
-        if (activeBalls.Count >= maxBalls)
-        {
-            return;
-        }
-
-        // Instantiate ball
         GameObject ball = Instantiate(ballPrefab, shootPoint.position, shootPoint.rotation);
         ball.tag = "PlayerBall";
 
-        // Ensure Rigidbody is present and set properly
-        Rigidbody rb = ball.GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            rb = ball.AddComponent<Rigidbody>();
-        }
+        int damage    = (eeg != null) ? eeg.ballDamage : 1;
+        PlayerBall bd = ball.GetComponent<PlayerBall>() ?? ball.AddComponent<PlayerBall>();
+        bd.damage     = damage;
 
+        Rigidbody rb = ball.GetComponent<Rigidbody>() ?? ball.AddComponent<Rigidbody>();
         rb.isKinematic = false;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        rb.linearVelocity = Vector3.zero;  // Reset velocity before applying force
-
-        // Ensure collider exists and is not a trigger
-        Collider col = ball.GetComponent<Collider>();
-        if (col == null)
-        {
-            //Debug.LogWarning("Ball prefab missing collider! Add a non-trigger collider to the prefab.");
-        }
-        else if (col.isTrigger)
-        {
-            //Debug.LogWarning("Ball prefab collider is set to trigger! Set isTrigger to false.");
-        }
-
-        // Apply force
+        rb.linearVelocity = Vector3.zero;
         rb.AddForce(shootPoint.forward * shootForce, ForceMode.Impulse);
 
-        // Track this ball
         activeBalls.Add(ball);
     }
-
 
     void Reload()
     {
         foreach (GameObject ball in activeBalls)
-        {
-            if (ball != null)
-            {
-                Destroy(ball);
-            }
-        }
-
+            if (ball != null) Destroy(ball);
         activeBalls.Clear();
     }
 }
-

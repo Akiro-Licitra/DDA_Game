@@ -1,20 +1,12 @@
 using UnityEngine;
 
+/// <summary>
+/// Reads damage from the incoming PlayerBall rather than from EEG directly.
+/// No reference to EEGOscReceiver needed here.
+/// </summary>
 public class TargetHitCounter : MonoBehaviour
 {
-    public int targetHP = 6;      // HP instead of hits
-    private EEGOscReceiver eeg;       // reference to your global manager
-
-    private void Start()
-    {
-        // Finds the eegManager script in the scene
-        eeg = FindObjectOfType<EEGOscReceiver>();
-
-        if (eeg == null)
-        {
-            Debug.LogError("TargetHitCounter: No eegManager found in the scene!");
-        }
-    }
+    public int targetHP = 6;
 
     private void OnCollisionEnter(Collision collision)
     {
@@ -28,20 +20,15 @@ public class TargetHitCounter : MonoBehaviour
 
     private void CheckBall(GameObject obj)
     {
-        if (!obj.CompareTag("PlayerBall"))
-            return;
+        if (!obj.CompareTag("PlayerBall")) return;
 
-        // Read the global damage value
-        int damage = eeg.ballDamage;
+        PlayerBall ball = obj.GetComponent<PlayerBall>();
+        int damage = (ball != null) ? ball.damage : 1;
 
-        // Apply damage
         targetHP -= damage;
-
-        Debug.Log($"Ball hit: Damage {damage}. HP remaining: {targetHP}");
+        Debug.Log($"Hit: {damage} dmg. HP remaining: {targetHP}");
 
         if (targetHP <= 0)
-        {
             Destroy(gameObject);
-        }
     }
 }

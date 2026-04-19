@@ -58,8 +58,13 @@ public class StaminaBarUI : MaskableGraphic
         currentFill = Mathf.MoveTowards(currentFill, targetFill, Time.deltaTime * 4f);
         SetVerticesDirty();
 
+        // Fire ring is active whenever stamina drain is penalised —
+        // covers both high-stress (tier 2) and the unfocus StaminaDrain modifier.
+        bool fireActive = (EEGStressManager.Instance != null)
+                          ? EEGStressManager.Instance.StaminaDrainActive
+                          : player.IsInStressMode;
         if (fireRing != null)
-            fireRing.SetActive(player.IsInStressMode);
+            fireRing.SetActive(fireActive);
     }
 
     // -------------------------------------------------------------------------
