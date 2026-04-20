@@ -2041,7 +2041,7 @@ MonoBehaviour:
   modifierDurationMin: 10
   modifierDurationMax: 15
   postModifierCooldown: 9
-  DebugHighStress: 1
+  DebugHighStress: 0
   DebugStaminaDrain: 0
   DebugRapidFire: 0
   DebugFastProjectile: 0
